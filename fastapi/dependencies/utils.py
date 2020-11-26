@@ -1,7 +1,9 @@
 import asyncio
 import inspect
+import json
 from contextlib import contextmanager
 from copy import deepcopy
+from json import JSONDecodeError
 from typing import (
     Any,
     Callable,
@@ -15,6 +17,7 @@ from typing import (
     Union,
     cast,
 )
+
 
 from fastapi import params
 from fastapi.concurrency import (
@@ -671,6 +674,11 @@ async def request_body_to_args(
                     except AttributeError:
                         errors.append(get_missing_field_error(loc))
                         continue
+                    if issubclass(field.type_, BaseModel):
+                        try:
+                            value = json.loads(value)
+                        except JSONDecodeError:
+                            errors.append(ErrorWrapper(JsonError(), loc=loc))
             if (
                 value is None
                 or (isinstance(field_info, params.Form) and value == "")
